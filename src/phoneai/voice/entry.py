@@ -171,7 +171,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     try:
         await session.start(
             room=ctx.room,
-            agent=build_agent(deps),
+            agent=build_agent(deps, profile.voice_style),
             room_options=room_io.RoomOptions(audio_input=audio_input),
             record=may_record_audio(profile.record_audio, contact),
         )

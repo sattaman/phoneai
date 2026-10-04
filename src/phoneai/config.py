@@ -30,6 +30,9 @@ class Settings(BaseSettings):
         default="", validation_alias=AliasChoices("OPENROUTER_API_KEY", "OPEN_ROUTER_API_SECRET")
     )
     summary_model: str = "google/gemini-2.5-flash-lite"
+    gemini_api_key: str = Field(
+        default="", validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY")
+    )
 
     sip_domain: str = Field(default="", validation_alias="TWILIO_SIP_DOMAIN")
     sip_username: str = Field(default="", validation_alias="TWILIO_SIP_USERNAME")
@@ -54,20 +57,33 @@ class Settings(BaseSettings):
 
 @dataclass(frozen=True)
 class Profile:
+    """A voice pipeline: either a cascade (STT -> LLM -> TTS) or, when `realtime_model` is
+    set, a speech-to-speech model that listens, thinks and speaks in one."""
+
     name: str
-    stt_model: str
-    stt_language: str
-    llm_model: str
-    llm_fallback: str
-    tts_model: str
-    tts_voice: str
-    tts_language: str
+    stt_model: str = ""
+    stt_language: str = "en-GB"
+    llm_model: str = ""
+    llm_fallback: str = ""
+    tts_model: str = ""
+    tts_voice: str = ""
+    tts_language: str = "en-GB"
     llm_reasoning_effort: str | None = None  # for reasoning models, e.g. "minimal"
+    realtime_model: str | None = None  # e.g. "gemini-3.8-live-extended-thinking"
+    realtime_voice: str = "Puck"
+    realtime_thinking: str | None = None  # MINIMAL | LOW | MEDIUM | HIGH (Gemini Live)
+    voice_style: str = ""  # appended to instructions, e.g. accent and delivery
     min_endpointing_delay: float = 0.8
     max_endpointing_delay: float = 3.0
     record_audio: bool = False  # only enable for calls to the owner (privacy)
 
+    @property
+    def is_realtime(self) -> bool:
+        return bool(self.realtime_model)
+
     def models(self) -> dict[str, str]:
+        if self.realtime_model:
+            return {"realtime": f"{self.realtime_model}:{self.realtime_voice}"}
         return {
             "stt": self.stt_model,
             "llm": self.llm_model,

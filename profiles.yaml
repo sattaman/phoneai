@@ -40,3 +40,12 @@ uk_luna:                    # GPT-6 Luna, reasoning minimal: ~3x cheaper, ~0.5s 
   tts_voice: pandora
   tts_language: en-GB
   record_audio: false
+
+uk_gemini_live:             # speech-to-speech experiment (P4); needs GEMINI_API_KEY
+  realtime_model: gemini-3.8-live-extended-thinking
+  realtime_voice: Zephyr
+  realtime_thinking: LOW      # MINIMAL | LOW | MEDIUM | HIGH: trade latency for reasoning
+  voice_style: >-
+    Speak with a natural, warm British (southern English) accent, like a friendly
+    assistant on the phone: relaxed, upbeat, quick, with a touch of dry humour.
+  record_audio: false
