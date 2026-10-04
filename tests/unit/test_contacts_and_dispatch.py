@@ -36,6 +36,7 @@ def test_call_request_metadata_has_no_phone_number():
         "scenario": "s",
         "profile": "p",
         "dispatched_at": 1000.0,
+        "max_seconds": None,
     }
     assert CallRequest.from_metadata(req.to_metadata(), "d", "d") == req
 

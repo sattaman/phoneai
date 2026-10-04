@@ -44,6 +44,7 @@ def cmd_call(args: argparse.Namespace) -> None:
         contact_id=args.contact,
         scenario=args.scenario,
         profile=args.profile,
+        max_seconds=args.max_seconds,
     )
     asyncio.run(dispatch_call(request))
     print(f"Call {request.call_id} dispatched to {args.contact} ({args.scenario}).")
@@ -143,6 +144,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("contact", help="contact id from contacts.local.yaml")
     p.add_argument("--scenario", default="book_gym_session")
     p.add_argument("--profile", default="uk_default")
+    p.add_argument("--max-seconds", type=int, default=None, help="cap for this call")
     p.set_defaults(func=cmd_call)
 
     p = sub.add_parser("calls", help="list recent call records")

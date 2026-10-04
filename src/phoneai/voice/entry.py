@@ -66,7 +66,7 @@ server = AgentServer(num_idle_processes=1)
 async def entrypoint(ctx: agents.JobContext) -> None:
     settings = Settings()
     req = CallRequest.from_metadata(ctx.job.metadata, DEFAULT_SCENARIO, DEFAULT_PROFILE)
-    deadline = call_deadline(req.dispatched_at, settings.max_call_seconds)
+    deadline = call_deadline(req.dispatched_at, req.max_seconds or settings.max_call_seconds)
     clock = SystemClock(settings)
     call_id = req.call_id or ctx.job.id
     record = CallRecord(

@@ -35,6 +35,7 @@ class CallRequest:
     scenario: str
     profile: str
     dispatched_at: float = field(default_factory=time.time)  # deadline is measured from here
+    max_seconds: int | None = None  # per-call cap; defaults to MAX_CALL_SECONDS
 
     def to_metadata(self) -> str:
         return json.dumps(self.__dict__)
@@ -48,6 +49,7 @@ class CallRequest:
             scenario=d.get("scenario") or default_scenario,
             profile=d.get("profile") or default_profile,
             dispatched_at=float(d.get("dispatched_at") or time.time()),
+            max_seconds=int(d["max_seconds"]) if d.get("max_seconds") else None,
         )
 
 
