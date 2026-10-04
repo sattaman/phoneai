@@ -1,16 +1,26 @@
 # Voice profiles: one per pipeline configuration we want to compare.
 # Model ids are LiveKit Inference (STT/TTS) and OpenRouter (LLM).
-uk_default:
+uk_default:                 # LLM chosen by the evals in docs/evals.md
   stt_model: deepgram/nova-3
   stt_language: en-GB
-  llm_model: google/gemini-2.5-flash-lite
-  llm_fallback: openai/gpt-4.1-nano
+  llm_model: openai/gpt-4.1-mini
+  llm_fallback: google/gemini-2.5-flash-lite
   tts_model: deepgram/aura-2
   tts_voice: pandora        # British female; "draco" is British male
   tts_language: en-GB
   record_audio: false
 
-uk_default_recorded:        # same, with audio attached to the trace: owner-only calls
+uk_default_recorded:        # same, with audio recording: owner-only calls
+  stt_model: deepgram/nova-3
+  stt_language: en-GB
+  llm_model: openai/gpt-4.1-mini
+  llm_fallback: google/gemini-2.5-flash-lite
+  tts_model: deepgram/aura-2
+  tts_voice: pandora
+  tts_language: en-GB
+  record_audio: true
+
+uk_cheap:                   # ~5x cheaper LLM; misses some save_note calls (docs/evals.md)
   stt_model: deepgram/nova-3
   stt_language: en-GB
   llm_model: google/gemini-2.5-flash-lite
@@ -18,4 +28,4 @@ uk_default_recorded:        # same, with audio attached to the trace: owner-only
   tts_model: deepgram/aura-2
   tts_voice: pandora
   tts_language: en-GB
-  record_audio: true
+  record_audio: false

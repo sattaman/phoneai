@@ -59,6 +59,53 @@ def cmd_calls(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_eval(args: argparse.Namespace) -> None:
+    """Run the scenario evals once per model (one LangSmith experiment each), then write
+    a comparison table."""
+    import json
+    import os
+    import subprocess
+    from datetime import datetime
+    from pathlib import Path
+
+    import httpx
+
+    from phoneai.evals import read_rows, render_report
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    results = Path("evals/results") / f"{stamp}.jsonl"
+    models = [m.strip() for m in args.models.split(",") if m.strip()]
+    for model in models:
+        print(f"== {model}")
+        env = {
+            **os.environ,
+            "EVAL_MODEL": model,
+            "EVAL_SAMPLES": str(args.samples),
+            "EVAL_RESULTS": str(results),
+            "LANGSMITH_PROJECT": "phoneai-tests",
+            "LANGSMITH_TEST_SUITE": "phoneai-gym-evals",
+            "LANGSMITH_EXPERIMENT": f"{model.split('/')[-1]}-{stamp}",
+            "LANGSMITH_EXPERIMENT_METADATA": json.dumps({"model": model, "samples": args.samples}),
+        }
+        subprocess.run(["pytest", "-m", "eval", "-q", "tests/evals"], env=env, check=False)
+
+    catalogue = httpx.get("https://openrouter.ai/api/v1/models", timeout=30).json()["data"]
+    prices = {
+        m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"]))
+        for m in catalogue
+    }
+    report = render_report(read_rows(results), prices)
+    header = (
+        f"# Model comparison: book_gym_session\n\n"
+        f"Run {datetime.now():%Y-%m-%d %H:%M}; {args.samples} sample(s) per case; "
+        f"cases in `evals/cases.yaml`; judges: LiveKit task_completion + tool_use "
+        f"({os.getenv('EVAL_JUDGE_MODEL', 'google/gemini-2.5-flash')}). Cost is the agent "
+        f"LLM only (OpenRouter list prices), excluding STT/TTS and judges.\n\n"
+    )
+    Path(args.out).write_text(header + report)
+    print(report)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="phoneai")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -77,6 +124,12 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("calls", help="list recent call records")
     p.add_argument("--limit", type=int, default=20)
     p.set_defaults(func=cmd_calls)
+
+    p = sub.add_parser("eval", help="compare models on the scenario evals (costs money)")
+    p.add_argument("--models", default="google/gemini-2.5-flash-lite")
+    p.add_argument("--samples", type=int, default=2)
+    p.add_argument("--out", default="docs/evals.md")
+    p.set_defaults(func=cmd_eval)
 
     args = parser.parse_args(argv)
     args.func(args)

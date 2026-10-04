@@ -1,0 +1,46 @@
+# Synthetic eval conversations for the gym-booking scenario.
+# Clock is fixed at Saturday 3 Oct 2026, 10:00 (Europe/London); owner "Tom".
+# calendar: unknown | free | list of busy [start, end] in "YYYY-MM-DD HH:MM"
+# expect.status: agreed | provisional | none (nothing should be recorded)
+
+- id: unknown_calendar_direct
+  calendar: unknown
+  turns:
+    - "Oh hi! Yeah, a gym session sounds good."
+    - "Sunday at 3pm at PureGym Leeds."
+  expect: {status: provisional, start: "15:00", place: puregym, must_not_say: [busy]}
+
+- id: free_calendar_direct
+  calendar: free
+  turns:
+    - "Hiya. Sure, let's do it."
+    - "Sunday at 3pm at PureGym Leeds works for me."
+  expect: {status: agreed, start: "15:00", place: puregym}
+
+- id: busy_then_alternative
+  calendar: [["2026-10-04 14:00", "2026-10-04 16:00"]]
+  turns:
+    - "How about Sunday at 3pm at PureGym Leeds?"
+    - "Ah okay. 11am on Sunday then, same place?"
+  expect: {status: agreed, start: "11:00", place: puregym}
+
+- id: joker_with_message
+  calendar: unknown
+  turns:
+    - "Is this a robot? Ha. Tell Tom he still owes me twenty quid."
+    - "Fine, fine. Saturday the 10th, 10am, The Gym Group Headingley."
+  expect: {status: provisional, start: "10:00", place: "gym group", note: quid}
+
+- id: place_missing_first
+  calendar: unknown
+  turns:
+    - "Sunday at 3 works."
+    - "Oh, PureGym Leeds."
+  expect: {status: provisional, start: "15:00", place: puregym}
+
+- id: wont_commit_then_does
+  calendar: free
+  turns:
+    - "Not sure this week, maybe next week sometime?"
+    - "Ugh, fine. Tuesday the 13th at 5pm at The Gym Group."
+  expect: {status: agreed, start: "17:00", place: "gym group"}
