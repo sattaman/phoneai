@@ -98,6 +98,7 @@ class Scenario:
     success_criteria: tuple[str, ...] = ()
     event_minutes: int = 60  # length of the thing being arranged
     opening_line: str = ""  # exact first words (AI disclosure); spoken instantly if set
+    keyterms: tuple[str, ...] = ()  # names the speech-to-text should expect, e.g. "PureGym"
 
 
 @dataclass(frozen=True)
@@ -227,5 +228,8 @@ As soon as you have a day, time and place, call record_arrangement straight away
 (only use a place they actually named; if they haven't said where, ask)
 (it checks the calendar itself) and tell them exactly what it returns.
 Use check_availability only when you need to suggest times.
+After you ask a question, stop and wait for their answer: don't call tools or say more first.
+Confirm a day with its date ("Saturday the 10th?"), and if a name sounds unusual, read it
+back so they can correct it.
 Use save_note for anything {owner} should know, such as messages, preferences or requests.
 When the brief is done or the other person wants to go, say goodbye and end the call."""

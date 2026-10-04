@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from google.genai import types
-from livekit.agents import AgentSession, TurnHandlingOptions, inference
+from livekit.agents import NOT_GIVEN, AgentSession, TurnHandlingOptions, inference
 from livekit.plugins import google, openai  # plugins must load on the main thread
 
 from phoneai.config import Profile, Settings
@@ -27,7 +27,9 @@ def build_llm(profile: Profile, settings: Settings, *, fallback: bool = True) ->
     )
 
 
-def build_session(profile: Profile, settings: Settings) -> AgentSession:
+def build_session(
+    profile: Profile, settings: Settings, keyterms: tuple[str, ...] = ()
+) -> AgentSession:
     if profile.is_realtime:
         # Speech-to-speech: the model does its own listening, turn-taking and speaking.
         options: dict[str, Any] = {}
@@ -66,7 +68,12 @@ def build_session(profile: Profile, settings: Settings) -> AgentSession:
             **turn_handling,
         )
     return AgentSession(
-        stt=inference.STT(model=profile.stt_model, language=profile.stt_language),
+        stt=inference.STT(
+            model=profile.stt_model,
+            language=profile.stt_language,
+            # Deepgram Nova-3 keyterm prompting: brand and place names it would mishear.
+            extra_kwargs={"keyterm": list(keyterms)} if keyterms else NOT_GIVEN,
+        ),
         llm=build_llm(profile, settings),
         tts=inference.TTS(
             model=profile.tts_model, voice=profile.tts_voice, language=profile.tts_language
@@ -81,5 +88,7 @@ def build_session(profile: Profile, settings: Settings) -> AgentSession:
             },
             # Keep talking through "mm-hmm" style backchannels.
             interruption={"mode": "adaptive"},
+            # Start drafting the reply while the end of the turn is still being confirmed.
+            preemptive_generation={"enabled": True},
         ),
     )

@@ -173,7 +173,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         scenario=scenario,
         state=state,
     )
-    session = build_session(profile, settings)
+    session = build_session(profile, settings, scenario.keyterms)
 
     is_phone = req.contact_id is not None
     audio_input = room_io.AudioInputOptions()

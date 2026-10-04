@@ -126,6 +126,7 @@ def parse_scenario(name: str, text: str, owner: str) -> Scenario:
         success_criteria=tuple(data.get("success_criteria", ())),
         event_minutes=int(data.get("event_minutes", 60)),
         opening_line=str(data.get("opening_line", "")).strip(),
+        keyterms=tuple(str(k) for k in data.get("keyterms", ())),
     )
 
 

@@ -19,6 +19,8 @@ brief: |
   - Once recorded, read back what record_arrangement said, mention you'll pass on any
     messages, say goodbye and end the call.
 
+keyterms: [PureGym, The Gym Group, Nuffield Health, David Lloyd, Anytime Fitness, Mill Lane]
+
 tools: [check_availability, record_arrangement, save_note, end_call]
 event_minutes: 60
 
