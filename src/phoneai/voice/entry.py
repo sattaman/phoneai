@@ -77,6 +77,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     async def on_shutdown() -> None:
         if session:
+            # Shutdown callbacks run concurrently with the session closing; close it
+            # ourselves first so the final turns and usage are included.
+            with contextlib.suppress(Exception):
+                await session.aclose()
             record.metrics = metrics_from(session)
         await finish_call(
             record=record,

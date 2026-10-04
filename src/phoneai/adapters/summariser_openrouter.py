@@ -6,6 +6,7 @@ from langchain_openrouter import ChatOpenRouter
 from pydantic import BaseModel, Field, SecretStr
 
 from phoneai.domain import CallSummary, Scenario, Turn
+from phoneai.observability import masked_langchain_callbacks
 
 
 class _Summary(BaseModel):
@@ -45,6 +46,7 @@ class OpenRouterSummariser:
             ],
             # thread_id groups this run with the call's voice trace in LangSmith
             config={
+                "callbacks": masked_langchain_callbacks(),
                 "run_name": "call_summary",
                 "tags": ["summary"],
                 "metadata": {"thread_id": call_id, "scenario": scenario.name},
