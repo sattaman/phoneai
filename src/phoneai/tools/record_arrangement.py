@@ -2,60 +2,87 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
 
-from phoneai.domain import Arrangement, ArrangementStatus, describe_slots, free_slots
+from phoneai.domain import (
+    Arrangement,
+    ArrangementStatus,
+    describe_slots,
+    free_slots,
+    is_specific_place,
+)
 from phoneai.ports import CalendarUnavailable
 from phoneai.tools import Tool, ToolDeps
 
 
 def build(deps: ToolDeps) -> Tool:
-    async def record_arrangement(day: str, start_time: str, place: str) -> str:
-        """Record the day, time and place agreed on the call.
+    def describe(a: Arrangement) -> str:
+        return f"{a.day:%A %d %B} at {a.start:%H:%M}, {a.place}"
 
-        The tool decides whether it is confirmed (owner is free) or provisional
-        (calendar unknown). Tell the caller exactly what this returns.
+    async def alternatives(target: date) -> str:
+        window_start, window_end = deps.hours.window(target, deps.tz)
+        try:
+            busy = await deps.calendar.busy(window_start, window_end)
+        except CalendarUnavailable:
+            return "Ask them for another time."
+        slots = free_slots(busy, window_start, window_end, deps.scenario.event_minutes)
+        return f"{describe_slots(slots)} Suggest one of those instead."
+
+    def keep_earlier() -> str:
+        earlier = deps.state.arrangement
+        return f" The earlier arrangement ({describe(earlier)}) still stands." if earlier else ""
+
+    async def record_arrangement(day: str, start_time: str, place: str) -> str:
+        """Record the day, time and place once they are settled. It checks the owner's
+        calendar itself and decides whether it is agreed (owner free) or provisional
+        (calendar unknown). A new successful call replaces any earlier arrangement.
+        Tell the caller exactly what this returns.
 
         Args:
             day: The date, in YYYY-MM-DD format.
             start_time: The start time, 24-hour HH:MM.
-            place: Where it will happen, e.g. the gym's name or area.
+            place: Where it will happen, as the caller named it (e.g. "PureGym Leeds").
         """
         try:
             target = date.fromisoformat(day)
             at = time.fromisoformat(start_time)
         except ValueError:
             return "Day or time not understood; confirm the exact date and time with them."
-        if not place.strip():
-            return "No place given; ask where they'd like to meet before recording."
+        if not is_specific_place(place):
+            return "No specific place given; ask which gym or place before recording."
 
         start = datetime.combine(target, at, deps.tz)
         end = start + timedelta(minutes=deps.scenario.event_minutes)
         if start <= deps.clock.now():
             return "That time has already passed; ask for a future time."
+        window_start, window_end = deps.hours.window(target, deps.tz)
+        if start < window_start or end > window_end:
+            return (
+                f"That's outside the hours {deps.owner} is available "
+                f"({window_start:%H:%M} to {window_end:%H:%M}), so nothing was recorded."
+                f"{keep_earlier()} Ask for a time within those hours."
+            )
 
         try:
             busy = await deps.calendar.busy(start, end)
         except CalendarUnavailable:
             status = ArrangementStatus.PROVISIONAL
         else:
-            if free_slots(busy, start, end, min_minutes=deps.scenario.event_minutes):
-                status = ArrangementStatus.AGREED
-            else:
-                window_start, window_end = deps.hours.window(target, deps.tz)
-                other = free_slots(
-                    await deps.calendar.busy(window_start, window_end), window_start, window_end
-                )
+            if not free_slots(busy, start, end, min_minutes=deps.scenario.event_minutes):
                 return (
-                    f"{deps.owner} is busy then, so nothing was recorded. "
-                    f"{describe_slots(other)} Suggest one of those instead."
+                    f"{deps.owner} is busy then, so nothing was recorded.{keep_earlier()} "
+                    f"{await alternatives(target)}"
                 )
+            status = ArrangementStatus.AGREED
 
-        deps.state.arrangement = Arrangement(target, at, place.strip(), status)
-        when = f"{start:%A %d %B} at {start:%H:%M}, {place.strip()}"
+        arrangement = Arrangement(target, at, place.strip(), status)
+        deps.state.arrangement = arrangement
         if status is ArrangementStatus.AGREED:
-            return f"{deps.owner} is free then, so it's agreed: {when}. Read this back to them."
+            return (
+                f"{deps.owner} is free then, so it's agreed: {describe(arrangement)}. "
+                "Read this back to them."
+            )
         return (
-            f"Recorded provisionally: {when}. Tell them {deps.owner} will confirm, "
-            f"because {deps.owner}'s calendar couldn't be checked."
+            f"Recorded provisionally: {describe(arrangement)}. Tell them {deps.owner} will "
+            f"confirm, because {deps.owner}'s calendar couldn't be checked."
         )
 
     return record_arrangement

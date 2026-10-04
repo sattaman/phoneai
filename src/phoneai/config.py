@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -10,7 +11,7 @@ import yaml
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from phoneai.domain import Scenario
+from phoneai.domain import Scenario, WorkingHours
 
 ROOT = Path.cwd()
 
@@ -22,6 +23,8 @@ class Settings(BaseSettings):
     timezone: str = "Europe/London"
     max_call_seconds: int = 300
     ringing_timeout_seconds: int = 30
+    available_from: time = time(9, 0)  # hours the owner can be booked
+    available_until: time = time(18, 0)
 
     openrouter_api_key: str = Field(
         default="", validation_alias=AliasChoices("OPENROUTER_API_KEY", "OPEN_ROUTER_API_SECRET")
@@ -43,6 +46,10 @@ class Settings(BaseSettings):
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
+
+    @property
+    def hours(self) -> WorkingHours:
+        return WorkingHours(self.available_from, self.available_until)
 
 
 @dataclass(frozen=True)

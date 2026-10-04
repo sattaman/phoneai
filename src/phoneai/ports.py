@@ -12,6 +12,14 @@ class CalendarUnavailable(Exception):
     """The calendar could not be read; availability is unknown."""
 
 
+class DialFailed(Exception):
+    """Raised when a call can't be connected. `category` is safe to log: never a number."""
+
+    def __init__(self, category: str) -> None:
+        super().__init__(category)
+        self.category = category
+
+
 class Calendar(Protocol):
     async def busy(self, start: datetime, end: datetime) -> list[tuple[datetime, datetime]]:
         """Busy intervals overlapping [start, end]. Raises CalendarUnavailable."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
@@ -72,6 +73,14 @@ def describe_slots(slots: list[Slot]) -> str:
     return "Free: " + ", ".join(f"{s.start:%H:%M} to {s.end:%H:%M}" for s in slots)
 
 
+_VAGUE_PLACES = {"", "gym", "a gym", "the gym", "tbc", "tbd", "unknown", "somewhere", "anywhere"}
+
+
+def is_specific_place(place: str) -> bool:
+    """Reject placeholders a model might invent when the caller hasn't named a place."""
+    return place.strip().lower().rstrip(".") not in _VAGUE_PLACES
+
+
 @dataclass(frozen=True)
 class Contact:
     id: str
@@ -135,11 +144,12 @@ class CallRecord:
     transcript: list[Turn] = field(default_factory=list)
     metrics: dict[str, float] = field(default_factory=dict)
     models: dict[str, str] = field(default_factory=dict)
+    failure: str | None = None  # fixed category, e.g. "unknown_contact", "sip_486"
 
 
-def decide_outcome(answered: bool, failed: bool, arrangement: Arrangement | None) -> Outcome:
+def decide_outcome(answered: bool, failure: str | None, arrangement: Arrangement | None) -> Outcome:
     """The outcome comes from recorded facts (tool state), never from the LLM's own claims."""
-    if failed:
+    if failure:
         return Outcome.FAILED
     if not answered:
         return Outcome.NO_ANSWER
@@ -148,6 +158,26 @@ def decide_outcome(answered: bool, failed: bool, arrangement: Arrangement | None
     if arrangement.status is ArrangementStatus.AGREED:
         return Outcome.AGREED
     return Outcome.PROVISIONAL
+
+
+_PHONE_LIKE = re.compile(r"(?<![\w])\+?\d[\d ()-]{6,}\d")
+
+
+def redact_phone_numbers(text: str) -> str:
+    """Replace anything that looks like a phone number (9+ digits) with [number].
+
+    9+ digits keeps dates (2026-10-04) and times intact; UK/US numbers have 10-12 digits.
+    """
+
+    def sub(m: re.Match[str]) -> str:
+        return "[number]" if sum(c.isdigit() for c in m.group()) >= 9 else m.group()
+
+    return _PHONE_LIKE.sub(sub, text)
+
+
+def may_record_audio(requested: bool, contact: Contact | None) -> bool:
+    """Audio is only recorded for browser sessions or calls to the owner themself."""
+    return requested and (contact is None or contact.relationship == "self")
 
 
 def build_instructions(owner: str, scenario: Scenario, today: date) -> str:
@@ -160,9 +190,10 @@ Call brief:
 
 Today is {today:%A %d %B %Y}. Times are UK time.
 Keep every reply to one or two short spoken sentences. No lists, symbols or emojis.
-Never state or guess {owner}'s availability yourself;
-only repeat what check_availability returns.
-When a day, time and place are settled, call record_arrangement
-and tell them exactly what it returns.
+Never state or guess {owner}'s availability yourself; only repeat what the tools return.
+As soon as you have a day, time and place, call record_arrangement straight away
+(only use a place they actually named; if they haven't said where, ask)
+(it checks the calendar itself) and tell them exactly what it returns.
+Use check_availability only when you need to suggest times.
 Use save_note for anything {owner} should know, such as messages, preferences or requests.
 When the brief is done or the other person wants to go, say goodbye and end the call."""

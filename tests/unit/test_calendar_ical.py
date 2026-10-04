@@ -57,3 +57,30 @@ def test_all_day_event_blocks_the_local_day():
 async def test_no_calendar_is_always_unavailable():
     with pytest.raises(CalendarUnavailable):
         await NoCalendar().busy(at(5, 9), at(5, 18))
+
+
+ICS_EDGE = b"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:test
+BEGIN:VEVENT
+UID:duration
+DTSTART;TZID=Europe/London:20261005T110000
+DURATION:PT90M
+SUMMARY:uses DURATION not DTEND
+END:VEVENT
+BEGIN:VEVENT
+UID:midnight
+DTSTART;TZID=Europe/London:20261006T000000
+DTEND;TZID=Europe/London:20261006T010000
+SUMMARY:timed event at midnight is not all-day
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+def test_duration_is_used_when_dtend_missing():
+    assert busy_intervals(ICS_EDGE, at(5, 0), at(6, 0), TZ) == [(at(5, 11), at(5, 12, 30))]
+
+
+def test_timed_midnight_event_is_not_all_day():
+    assert busy_intervals(ICS_EDGE, at(6, 0), at(7, 0), TZ) == [(at(6, 0), at(6, 1))]

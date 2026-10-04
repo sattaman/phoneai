@@ -26,9 +26,17 @@ def test_missing_contacts_file_is_empty(tmp_path: Path):
 
 
 def test_call_request_metadata_has_no_phone_number():
-    req = CallRequest(call_id="c1", contact_id="friend", scenario="s", profile="p")
+    req = CallRequest(
+        call_id="c1", contact_id="friend", scenario="s", profile="p", dispatched_at=1000.0
+    )
     meta = json.loads(req.to_metadata())
-    assert meta == {"call_id": "c1", "contact_id": "friend", "scenario": "s", "profile": "p"}
+    assert meta == {
+        "call_id": "c1",
+        "contact_id": "friend",
+        "scenario": "s",
+        "profile": "p",
+        "dispatched_at": 1000.0,
+    }
     assert CallRequest.from_metadata(req.to_metadata(), "d", "d") == req
 
 

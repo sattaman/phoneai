@@ -3,6 +3,7 @@ from datetime import date
 from phoneai.domain import (
     Arrangement,
     ArrangementStatus,
+    Contact,
     Outcome,
     Scenario,
     Slot,
@@ -10,6 +11,8 @@ from phoneai.domain import (
     decide_outcome,
     describe_slots,
     free_slots,
+    may_record_audio,
+    redact_phone_numbers,
 )
 from tests.conftest import at
 
@@ -66,12 +69,12 @@ def arrangement(status: ArrangementStatus) -> Arrangement:
 
 
 def test_outcome_is_decided_from_recorded_facts():
-    assert decide_outcome(True, True, None) is Outcome.FAILED
-    assert decide_outcome(False, False, None) is Outcome.NO_ANSWER
-    assert decide_outcome(True, False, None) is Outcome.INCOMPLETE
-    assert decide_outcome(True, False, arrangement(ArrangementStatus.AGREED)) is Outcome.AGREED
+    assert decide_outcome(True, "sip_486", None) is Outcome.FAILED
+    assert decide_outcome(False, None, None) is Outcome.NO_ANSWER
+    assert decide_outcome(True, None, None) is Outcome.INCOMPLETE
+    assert decide_outcome(True, None, arrangement(ArrangementStatus.AGREED)) is Outcome.AGREED
     assert (
-        decide_outcome(True, False, arrangement(ArrangementStatus.PROVISIONAL))
+        decide_outcome(True, None, arrangement(ArrangementStatus.PROVISIONAL))
         is Outcome.PROVISIONAL
     )
 
@@ -80,5 +83,24 @@ def test_instructions_disclose_ai_and_forbid_guessing_availability():
     text = build_instructions("Tom", Scenario("s", "BRIEF", "hi", ()), date(2026, 10, 3))
     assert "AI assistant calling on behalf of Tom" in text
     assert "Never state or guess Tom's availability yourself" in text
+    assert "call record_arrangement straight away" in text
     assert "BRIEF" in text
     assert "Saturday 03 October 2026" in text
+
+
+def test_redact_phone_numbers():
+    assert redact_phone_numbers("call me on 07700 900123 or +44 (0)7700-900124") == (
+        "call me on [number] or [number]"
+    )
+    assert redact_phone_numbers("Sunday at 3pm, 2026-10-04, room 12") == (
+        "Sunday at 3pm, 2026-10-04, room 12"
+    )
+
+
+def test_audio_only_recorded_for_owner_or_browser():
+    me = Contact("me", "Tom", "+447700900000", "self")
+    friend = Contact("friend", "A Friend", "+447700900001", "friend")
+    assert may_record_audio(True, None)
+    assert may_record_audio(True, me)
+    assert not may_record_audio(True, friend)
+    assert not may_record_audio(False, me)

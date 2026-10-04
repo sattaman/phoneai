@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 
 from google.protobuf.duration_pb2 import Duration
 from livekit import api
 
+from phoneai.domain import Contact
+from phoneai.ports import DialFailed
+
 logger = logging.getLogger(__name__)
 
 AGENT_NAME = "phoneai"
-
-
-class CallFailed(Exception):
-    def __init__(self, reason: str, sip_status: str | None = None) -> None:
-        super().__init__(reason)
-        self.sip_status = sip_status
 
 
 @dataclass(frozen=True)
@@ -36,6 +34,7 @@ class CallRequest:
     contact_id: str | None
     scenario: str
     profile: str
+    dispatched_at: float = field(default_factory=time.time)  # deadline is measured from here
 
     def to_metadata(self) -> str:
         return json.dumps(self.__dict__)
@@ -48,6 +47,7 @@ class CallRequest:
             contact_id=d.get("contact_id"),
             scenario=d.get("scenario") or default_scenario,
             profile=d.get("profile") or default_profile,
+            dispatched_at=float(d.get("dispatched_at") or time.time()),
         )
 
 
@@ -68,12 +68,16 @@ async def dial(
     *,
     room: str,
     call_id: str,
-    phone: str,
+    contact: Contact,
     trunk: SipTrunk,
     ringing_timeout_s: int,
     max_call_duration_s: int,
 ) -> None:
-    """Dial and wait until answered. SIP enforces the hard cap on call duration."""
+    """Dial and wait until answered. SIP enforces the hard cap on call duration.
+
+    Raises DialFailed with a fixed category; the SIP error text is not logged because it
+    can contain the dialled number.
+    """
     try:
         await lkapi.sip.create_sip_participant(
             api.CreateSIPParticipantRequest(
@@ -84,16 +88,16 @@ async def dial(
                     auth_password=trunk.password,
                 ),
                 sip_number=trunk.caller_id,
-                sip_call_to=phone,
+                sip_call_to=contact.phone,
                 participant_identity=f"callee-{call_id}",  # no phone number in identity
                 participant_name="callee",
                 hide_phone_number=True,
-                ringing_timeout=Duration(seconds=ringing_timeout_s),
+                ringing_timeout=Duration(seconds=min(ringing_timeout_s, max_call_duration_s)),
                 max_call_duration=Duration(seconds=max_call_duration_s),
                 wait_until_answered=True,
             )
         )
     except api.TwirpError as e:
-        status = (e.metadata or {}).get("sip_status_code")
-        logger.warning("call %s failed: %s (SIP %s)", call_id, e.message, status)
-        raise CallFailed(e.message, status) from e
+        status = (e.metadata or {}).get("sip_status_code") or e.code
+        logger.warning("call %s failed: sip_%s", call_id, status)
+        raise DialFailed(f"sip_{status}") from None
