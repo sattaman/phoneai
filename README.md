@@ -24,7 +24,11 @@ calling), OpenRouter (swappable LLMs), LangChain (structured summaries) and Lang
 - **Swappable pipelines.** Cascade (speech-to-text → LLM → TTS) or speech-to-speech (Gemini
   Live) per voice profile, with the same tools and scenarios.
 
-From a test call (the callee tries to divert it):
+**[▶ Demo: a real 60-second call](docs/demo.mp4)**: the agent books a gym session, sticks
+to the owner's available hours (a 9pm start is pushed to 8pm by the booking tool), confirms
+the date and takes the place name correctly.
+
+From another test call (the callee tries to divert it):
 
 > **Agent:** Hello, I'm Tom's AI assistant. He's keen to get a gym session in with you, so
 > I'm calling to see when and where suits you best.
