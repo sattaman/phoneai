@@ -1,13 +1,36 @@
 # phoneai
 
-An AI phone assistant that **makes outbound calls on your behalf**. It holds a natural
-British-English conversation, uses tools to check your calendar and record what was agreed,
-takes messages, and writes up every call. With LangSmith enabled, each call is traced end
-to end.
+[![ci](https://github.com/sattaman/phoneai/actions/workflows/ci.yml/badge.svg)](https://github.com/sattaman/phoneai/actions/workflows/ci.yml)
 
-Built with [LiveKit Agents](https://docs.livekit.io/agents/) (voice pipeline and SIP calling),
-OpenRouter (any LLM), LangChain (structured summaries) and LangSmith (tracing and evals),
-around a small ports-and-adapters core that is tested offline.
+An agentic voice assistant that **places real phone calls on your behalf**. It rings a
+contact, holds a natural, real-time British-English conversation, uses tools mid-call to
+check your calendar and record what was agreed, takes messages, and writes up every call.
+
+Built with [LiveKit Agents](https://docs.livekit.io/agents/) (real-time voice and SIP
+calling), OpenRouter (swappable LLMs), LangChain (structured summaries) and LangSmith
+(tracing and evals), around a small ports-and-adapters core that is tested offline.
+
+### Highlights
+
+- **Real-time constraints.** A phone turn has about a second of budget. Voices, models and
+  turn-taking were chosen from measured latency on real calls
+  ([voice experiments](docs/voice-experiments.md)).
+- **Tools the model can't fake.** Outcomes come from tool state, not from what the model
+  says. Two failures seen on real calls became regression tests.
+- **Evals, not vibes.** Scripted conversations × models, scored by deterministic checks and
+  LLM judges, one LangSmith experiment per model ([results](docs/evals.md)).
+- **Traceable and private.** Each call is a LangSmith thread, with phone numbers redacted
+  before any span leaves the process.
+- **Swappable pipelines.** Cascade (speech-to-text → LLM → TTS) or speech-to-speech (Gemini
+  Live) per voice profile, with the same tools and scenarios.
+
+From a test call (the callee tries to divert it):
+
+> **Agent:** Hello, I'm Tom's AI assistant. He's keen to get a gym session in with you, so
+> I'm calling to see when and where suits you best.
+> **Callee:** How about while you're in the gym, I can come and help do some gardening?
+> **Agent:** My green thumb isn't quite developed enough for gardening yet, so let's get
+> that gym session in the diary instead.
 
 ```text
 $ phoneai call friend --scenario book_gym_session
@@ -23,8 +46,9 @@ $ phoneai calls
    **scenario** (a YAML brief, for example "arrange a gym session: day, time and place").
 2. The agent dials through a Twilio SIP trunk, says up front that it's an AI calling on your
    behalf, and holds the conversation: speech-to-text (Deepgram Nova-3, en-GB), an LLM via
-   OpenRouter, and text-to-speech (Deepgram Aura-2, British voice). It plays along with
-   jokes, deflects off-topic requests and steers back to the goal.
+   OpenRouter (`gpt-4.1-mini` by default), and text-to-speech (Cartesia Sonic-3.6, British
+   voice, with expressive mode for emotion and pauses). It plays along with jokes, deflects
+   off-topic requests and steers back to the goal.
 3. It uses **tools**: `check_availability` (your calendar, via iCal), `record_arrangement`
    (checks the calendar itself and records the result as *agreed* or *provisional*),
    `save_note` (messages for you) and `end_call`.
@@ -38,7 +62,7 @@ flowchart LR
   CLI["phoneai call"] -- dispatch<br/>(contact_id, scenario) --> W["LiveKit agent worker<br/>voice/entry.py"]
   W -- SIP --> T["Twilio"] --> P(("phone"))
   subgraph voice ["LiveKit AgentSession"]
-    STT["STT<br/>Nova-3"] --> LLM["LLM<br/>OpenRouter"] --> TTS["TTS<br/>Aura-2"]
+    STT["STT<br/>Nova-3"] --> LLM["LLM<br/>OpenRouter"] --> TTS["TTS<br/>Cartesia"]
   end
   W --> voice
   LLM -- function calls --> TA["tool adapter"]
@@ -132,7 +156,11 @@ in `calls/` like a phone call.
 Configuration lives in three places:
 - `.env`: keys, plus `OWNER_NAME`, `TIMEZONE`, `MAX_CALL_SECONDS` and
   `GOOGLE_CALENDAR_ICAL_URL`
-- `profiles.yaml`: the STT, LLM, TTS and voice setup
+- `profiles.yaml`: voice pipelines.
+  - `uk_default`: the cascade described above
+  - `uk_luna`: GPT-6 Luna, cheaper and slightly slower
+  - `uk_deepgram`: the original Deepgram voice
+  - `uk_gemini_live` and `uk_gemini_flash_live`: speech-to-speech
 - `scenarios/examples/*.yaml`: call briefs, with allowed tools and success criteria.
   Personal scenarios go in the gitignored `scenarios/private/`.
 
@@ -168,6 +196,12 @@ tests/{unit,agent,evals}   evals/cases.yaml   docs/{adr,evals.md}
   LangSmith.
 - **Agent and eval tests use real models,** so their results vary between runs; the evals
   report pass rates over several samples.
+
+## Responsible use
+
+The agent always says up front that it's an AI calling on someone's behalf. It only calls
+numbers you've put in your local contacts file, and calls are capped in length. Use it for
+people who'd be happy to get the call.
 
 ## Licence
 
