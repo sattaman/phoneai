@@ -26,23 +26,7 @@ calling), OpenRouter (swappable LLMs), LangChain (structured summaries) and Lang
 
 ### Sample call
 
-[▶ Play the sample call](docs/sample-call.mp4)
-
-From another test call:
-
-> **Agent:** Hello, I'm Tom's AI assistant. He's keen to get a gym session in with you, so
-> I'm calling to see when and where suits you best.
-> **Callee:** How about while you're in the gym, I can come and help do some gardening?
-> **Agent:** My green thumb isn't quite developed enough for gardening yet, so let's get
-> that gym session in the diary instead.
-
-```text
-$ phoneai call friend --scenario book_gym_session
-Call 3f9c21aa dispatched to friend (book_gym_session).
-
-$ phoneai calls
-2026-10-04 13:05  3f9c21aa  friend     book_gym_session     provisional  Sun 11 Oct 15:00 @ PureGym Leeds
-```
+https://github.com/user-attachments/assets/231bdaa2-bcb8-4d71-81ee-166be8c798a4
 
 ## What it does
 
