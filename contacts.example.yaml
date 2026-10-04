@@ -1,0 +1,9 @@
+# Copy to contacts.local.yaml (gitignored) and fill in. Numbers must be E.164.
+me:
+  name: Your Name
+  phone: "+447700900000"   # Ofcom drama-range number, safe for examples
+  relationship: self
+friend:
+  name: A Friend
+  phone: "+447700900001"
+  relationship: friend

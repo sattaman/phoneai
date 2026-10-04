@@ -1,0 +1,16 @@
+# secrets and personal data — never commit
+.env
+.env.*
+!.env.example
+contacts.local.yaml
+scenarios/private/
+calls/
+work/
+
+# tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
