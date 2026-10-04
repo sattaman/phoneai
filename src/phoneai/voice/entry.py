@@ -215,7 +215,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     answered_at = time.time()
     logger.info("call %s answered", call_id)
 
-    if scenario.opening_line:
+    # Speech-to-speech models are slow to speak first, so they use the pre-rendered line;
+    # cascades write their own opening (LLM + fast TTS is ~1s).
+    if scenario.opening_line and profile.is_realtime:
         frames = await opening_audio
         handle = session.say(
             scenario.opening_line, audio=frames_stream(frames) if frames else NOT_GIVEN

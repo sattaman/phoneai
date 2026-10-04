@@ -1,12 +1,23 @@
 # Voice profiles: one per pipeline configuration we want to compare.
 # Model ids are LiveKit Inference (STT/TTS) and OpenRouter (LLM).
-uk_default:                 # LLM chosen by the evals in docs/evals.md
+uk_default:                 # LLM chosen by the evals in docs/evals.md; voice by ear
+  stt_model: deepgram/nova-3
+  stt_language: en-GB
+  llm_model: openai/gpt-4.1-mini
+  llm_fallback: google/gemini-2.5-flash-lite
+  tts_model: cartesia/sonic-3.6
+  tts_voice: 79a125e8-cd45-4c13-8a67-188112f4dd22  # British female; ~0.35s to first audio
+  tts_language: en
+  expressive: true            # LLM adds emotion, pauses and laughs to the delivery
+  record_audio: false
+
+uk_deepgram:                # previous default: British voice, slower to start (~0.9s)
   stt_model: deepgram/nova-3
   stt_language: en-GB
   llm_model: openai/gpt-4.1-mini
   llm_fallback: google/gemini-2.5-flash-lite
   tts_model: deepgram/aura-2
-  tts_voice: pandora        # British female; "draco" is British male
+  tts_voice: pandora
   tts_language: en-GB
   record_audio: false
 
@@ -15,9 +26,10 @@ uk_default_recorded:        # same, with audio recording: owner-only calls
   stt_language: en-GB
   llm_model: openai/gpt-4.1-mini
   llm_fallback: google/gemini-2.5-flash-lite
-  tts_model: deepgram/aura-2
-  tts_voice: pandora
-  tts_language: en-GB
+  tts_model: cartesia/sonic-3.6
+  tts_voice: 79a125e8-cd45-4c13-8a67-188112f4dd22
+  tts_language: en
+  expressive: true
   record_audio: true
 
 uk_cheap:                   # ~5x cheaper LLM; misses some save_note calls (docs/evals.md)

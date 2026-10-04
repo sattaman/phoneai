@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from livekit.agents import Agent, AgentSession
 from livekit.agents.llm import ChatContext
 
@@ -21,13 +23,21 @@ def build_agent(deps: ToolDeps, voice_style: str = "") -> Agent:
     )
 
 
+_MARKUP = re.compile(r"<[^<>]*/?>")  # expressive-mode delivery tags, e.g. <expr .../>
+
+
+def clean_text(text: str) -> str:
+    return " ".join(_MARKUP.sub(" ", text).split())
+
+
 def transcript_from(history: ChatContext) -> list[Turn]:
     roles = {"assistant": "agent", "user": "callee"}
-    return [
-        Turn(roles[item.role], item.text_content)
+    turns = (
+        (roles[item.role], clean_text(item.text_content or ""))
         for item in history.items
-        if item.type == "message" and item.role in roles and item.text_content
-    ]
+        if item.type == "message" and item.role in roles
+    )
+    return [Turn(role, text) for role, text in turns if text]
 
 
 def metrics_from(session: AgentSession) -> dict[str, float]:

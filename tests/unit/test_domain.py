@@ -123,3 +123,12 @@ def test_aggregate_turn_metrics():
     assert m["transcription_delay_p50"] == 0.2
     assert "tts_node_ttfb_p50" not in m
     assert m["llm_input_tokens"] == 1200.0
+
+
+def test_expressive_markup_is_stripped_from_transcripts():
+    from phoneai.voice.agent import clean_text
+
+    raw = (
+        '<expr type="expression" label="warm"/> Hello there! <expr type="break" label="500ms"/> Ok'
+    )
+    assert clean_text(raw) == "Hello there! Ok"

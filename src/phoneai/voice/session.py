@@ -71,6 +71,7 @@ def build_session(profile: Profile, settings: Settings) -> AgentSession:
         tts=inference.TTS(
             model=profile.tts_model, voice=profile.tts_voice, language=profile.tts_language
         ),
+        expressive=profile.expressive,
         turn_handling=TurnHandlingOptions(
             turn_detection=inference.TurnDetector(),
             # Phone STT finals can arrive late; wait a little before replying.

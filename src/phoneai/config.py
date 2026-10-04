@@ -78,6 +78,7 @@ class Profile:
     realtime_silence_ms: int | None = None  # silence before the turn ends
     min_interruption_seconds: float | None = None  # ignore shorter sounds while speaking
     voice_style: str = ""  # appended to instructions, e.g. accent and delivery
+    expressive: bool = False  # LiveKit expressive mode: LLM marks up emotion/pauses/laughs
     min_endpointing_delay: float = 0.8
     max_endpointing_delay: float = 3.0
     record_audio: bool = False  # only enable for calls to the owner (privacy)
