@@ -159,7 +159,7 @@ tests/{unit,agent,evals}   evals/cases.yaml   docs/{adr,evals.md}
   events. `create_appointment` (Google Calendar API) is on the backlog.
 - **Calendar access is a read-only iCal feed.** Without it, every arrangement is
   provisional.
-- **Calls end at a hard deadline** (`MAX_CALL_SECONDS`, measured from dispatch), with a
+- **Calls end at a hard deadline** (`MAX_CALL_SECONDS` or `--max-seconds`, measured from when the agent starts the call; requests older than 60s are dropped rather than dialled), with a
   spoken goodbye. Failures are recorded with a fixed category (for example `sip_486` or
   `unknown_contact`) and no personal detail.
 - **Caller ID is a US Twilio number** until a UK number's regulatory approval completes.

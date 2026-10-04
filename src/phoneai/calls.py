@@ -20,11 +20,15 @@ from phoneai.ports import CallRecords, Clock, Contacts, DialFailed, Summariser
 logger = logging.getLogger(__name__)
 
 MIN_CALL_SECONDS = 20  # don't start a call that would be cut off almost immediately
+MAX_DISPATCH_AGE_SECONDS = 60  # never ring someone long after the call was requested
 
 
-def call_deadline(dispatched_at: float, max_call_seconds: int) -> float:
-    """Wall-clock deadline for the whole call, measured from dispatch."""
-    return dispatched_at + max_call_seconds
+def call_deadline(dispatched_at: float, started_at: float, max_call_seconds: int) -> float | None:
+    """Wall-clock deadline for the call, measured from when the worker starts it, so a slow
+    network doesn't eat into talk time. None if the request is too old to act on."""
+    if started_at - dispatched_at > MAX_DISPATCH_AGE_SECONDS:
+        return None
+    return started_at + max_call_seconds
 
 
 async def connect_callee(

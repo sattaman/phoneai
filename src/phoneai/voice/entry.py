@@ -66,7 +66,9 @@ server = AgentServer(num_idle_processes=1)
 async def entrypoint(ctx: agents.JobContext) -> None:
     settings = Settings()
     req = CallRequest.from_metadata(ctx.job.metadata, DEFAULT_SCENARIO, DEFAULT_PROFILE)
-    deadline = call_deadline(req.dispatched_at, req.max_seconds or settings.max_call_seconds)
+    deadline = call_deadline(
+        req.dispatched_at, time.time(), req.max_seconds or settings.max_call_seconds
+    )
     clock = SystemClock(settings)
     call_id = req.call_id or ctx.job.id
     record = CallRecord(
@@ -100,6 +102,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.info("call %s finished: %s", call_id, record.outcome.value)
 
     ctx.add_shutdown_callback(on_shutdown)
+
+    if deadline is None:
+        logger.warning("call %s: request too old to act on, not dialling", call_id)
+        record.failure = "stale_dispatch"
+        ctx.shutdown(reason="stale dispatch")
+        return
 
     # Watchdog runs from the start, so slow setup, ringing or speech can't overrun the deadline.
     async def watchdog() -> None:

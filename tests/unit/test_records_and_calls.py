@@ -167,3 +167,10 @@ async def test_connect_callee_failure_categories():
     assert await connect_callee(contacts, "friend", sip_busy, 200) == "sip_486"
     assert await connect_callee(contacts, "friend", broken, 200) == "setup_error"
     assert await connect_callee(contacts, "friend", ok, MIN_CALL_SECONDS - 1) == "deadline"
+
+
+def test_call_deadline_from_start_and_stale_requests():
+    from phoneai.calls import MAX_DISPATCH_AGE_SECONDS, call_deadline
+
+    assert call_deadline(1000.0, 1030.0, 120) == 1150.0  # slow dispatch doesn't eat talk time
+    assert call_deadline(1000.0, 1000.0 + MAX_DISPATCH_AGE_SECONDS + 1, 120) is None
