@@ -1,4 +1,6 @@
 # Synthetic example scenario. Personal scenarios go in scenarios/private/ (gitignored).
+opening_line: "Hi, it's {owner}'s AI assistant calling on their behalf. {owner} would like to get a gym session in the diary with you, so when suits you?"
+
 opening: >
   Say hello, say you're an AI assistant calling on behalf of {owner}, and that
   {owner} would like to get a gym session in the diary with them. Ask when suits them.

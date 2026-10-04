@@ -41,11 +41,25 @@ uk_luna:                    # GPT-6 Luna, reasoning minimal: ~3x cheaper, ~0.5s 
   tts_language: en-GB
   record_audio: false
 
-uk_gemini_live:             # speech-to-speech experiment (P4); needs GEMINI_API_KEY
+uk_gemini_live:             # speech-to-speech (P4); needs GEMINI_API_KEY
   realtime_model: gemini-3.8-live-extended-thinking
   realtime_voice: Zephyr
-  realtime_thinking: LOW      # MINIMAL | LOW | MEDIUM | HIGH: trade latency for reasoning
+  realtime_thinking: LOW      # lowest this model accepts (MINIMAL is rejected)
+  realtime_end_sensitivity: HIGH   # end the caller's turn sooner
+  realtime_silence_ms: 500
   voice_style: >-
     Speak with a natural, warm British (southern English) accent, like a friendly
     assistant on the phone: relaxed, upbeat, quick, with a touch of dry humour.
+    Reply immediately; keep each reply to one or two short sentences.
+  record_audio: false
+
+uk_gemini_flash_live:       # faster, non-thinking Gemini Live (listener favourite)
+  realtime_model: gemini-3.1-flash-live-preview
+  realtime_voice: Zephyr
+  realtime_end_sensitivity: HIGH
+  realtime_silence_ms: 500
+  voice_style: >-
+    Speak with a natural, warm British (southern English) accent, like a friendly
+    assistant on the phone: relaxed, upbeat, quick, with a touch of dry humour.
+    Reply immediately; keep each reply to one or two short sentences.
   record_audio: false

@@ -97,6 +97,7 @@ class Scenario:
     tools: tuple[str, ...]
     success_criteria: tuple[str, ...] = ()
     event_minutes: int = 60  # length of the thing being arranged
+    opening_line: str = ""  # exact first words (AI disclosure); spoken instantly if set
 
 
 @dataclass(frozen=True)

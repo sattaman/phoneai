@@ -11,7 +11,7 @@ import time  # noqa: E402
 from datetime import datetime  # noqa: E402
 
 from livekit import agents  # noqa: E402
-from livekit.agents import AgentServer, AgentSession, room_io  # noqa: E402
+from livekit.agents import NOT_GIVEN, AgentServer, AgentSession, room_io  # noqa: E402
 from livekit.plugins import ai_coustics  # noqa: E402
 
 from phoneai.adapters.calendar_ical import IcalCalendar, NoCalendar  # noqa: E402
@@ -36,6 +36,7 @@ from phoneai.domain import (  # noqa: E402
 from phoneai.observability import setup_tracing, start_call_trace  # noqa: E402
 from phoneai.tools import ToolDeps  # noqa: E402
 from phoneai.voice.agent import build_agent, metrics_from, transcript_from  # noqa: E402
+from phoneai.voice.opening import frames_stream, prerender_opening  # noqa: E402
 from phoneai.voice.session import build_session  # noqa: E402
 
 logger = logging.getLogger("phoneai")
@@ -57,7 +58,8 @@ class SystemClock:
 
 
 setup_tracing()  # before AgentServer, per the LangSmith LiveKit integration docs
-server = AgentServer()
+# Keep a process warm so a dispatched call doesn't wait ~5s for one to start.
+server = AgentServer(num_idle_processes=1)
 
 
 @server.rtc_session(agent_name=AGENT_NAME)
@@ -84,7 +86,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             # ourselves first so the final turns and usage are included.
             with contextlib.suppress(Exception):
                 await session.aclose()
-            record.metrics = metrics_from(session)
+            record.metrics = {**record.metrics, **metrics_from(session)}
         await finish_call(
             record=record,
             state=state,
@@ -181,6 +183,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ctx.shutdown(reason="session error")
         return
 
+    # Render the scripted opening while the phone rings (speech-to-speech profiles).
+    opening_audio = asyncio.create_task(prerender_opening(profile, settings, scenario.opening_line))
+
     if req.contact_id is not None:
         trunk = SipTrunk(
             settings.sip_domain, settings.sip_username, settings.sip_password, settings.caller_id
@@ -207,8 +212,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             ctx.shutdown(reason=failure)
             return
     record.answered = True
+    answered_at = time.time()
+    logger.info("call %s answered", call_id)
 
-    await session.generate_reply(instructions=scenario.opening)
+    if scenario.opening_line:
+        frames = await opening_audio
+        handle = session.say(
+            scenario.opening_line, audio=frames_stream(frames) if frames else NOT_GIVEN
+        )
+        record.metrics["answer_to_opening_s"] = round(time.time() - answered_at, 3)
+        logger.info(
+            "call %s opening (%s) after %.2fs",
+            call_id,
+            "pre-rendered" if frames else "tts",
+            record.metrics["answer_to_opening_s"],
+        )
+        await handle
+    else:
+        opening_audio.cancel()
+        await session.generate_reply(instructions=scenario.opening)
 
 
 def main() -> None:

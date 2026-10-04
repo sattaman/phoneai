@@ -72,6 +72,11 @@ class Profile:
     realtime_model: str | None = None  # e.g. "gemini-3.8-live-extended-thinking"
     realtime_voice: str = "Puck"
     realtime_thinking: str | None = None  # MINIMAL | LOW | MEDIUM | HIGH (Gemini Live)
+    # Gemini server-side turn detection: end turns sooner, ignore short noises
+    realtime_end_sensitivity: str | None = None  # HIGH = end turn sooner
+    realtime_start_sensitivity: str | None = None  # LOW = fewer false starts ("mm", noise)
+    realtime_silence_ms: int | None = None  # silence before the turn ends
+    min_interruption_seconds: float | None = None  # ignore shorter sounds while speaking
     voice_style: str = ""  # appended to instructions, e.g. accent and delivery
     min_endpointing_delay: float = 0.8
     max_endpointing_delay: float = 3.0
@@ -119,6 +124,7 @@ def parse_scenario(name: str, text: str, owner: str) -> Scenario:
         tools=tuple(data["tools"]),
         success_criteria=tuple(data.get("success_criteria", ())),
         event_minutes=int(data.get("event_minutes", 60)),
+        opening_line=str(data.get("opening_line", "")).strip(),
     )
 
 

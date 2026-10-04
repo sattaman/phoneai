@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from google.genai import types
 from livekit.agents import AgentSession, TurnHandlingOptions, inference
 from livekit.plugins import google, openai  # plugins must load on the main thread
@@ -12,7 +14,7 @@ from phoneai.config import Profile, Settings
 def build_llm(profile: Profile, settings: Settings, *, fallback: bool = True) -> openai.LLM:
     """OpenRouter LLM for a profile. Evals pass fallback=False so results are attributable
     to the named model."""
-    extra: dict = {}
+    extra: dict[str, Any] = {}
     if profile.llm_reasoning_effort:
         extra["reasoning_effort"] = profile.llm_reasoning_effort
     return openai.LLM.with_openrouter(
@@ -28,22 +30,40 @@ def build_llm(profile: Profile, settings: Settings, *, fallback: bool = True) ->
 def build_session(profile: Profile, settings: Settings) -> AgentSession:
     if profile.is_realtime:
         # Speech-to-speech: the model does its own listening, turn-taking and speaking.
+        options: dict[str, Any] = {}
+        if profile.realtime_thinking:
+            options["thinking_config"] = types.ThinkingConfig(
+                thinking_level=types.ThinkingLevel(profile.realtime_thinking)
+            )
+        activity: dict[str, Any] = {}
+        if profile.realtime_end_sensitivity:
+            activity["end_of_speech_sensitivity"] = types.EndSensitivity(
+                f"END_SENSITIVITY_{profile.realtime_end_sensitivity}"
+            )
+        if profile.realtime_start_sensitivity:
+            activity["start_of_speech_sensitivity"] = types.StartSensitivity(
+                f"START_SENSITIVITY_{profile.realtime_start_sensitivity}"
+            )
+        if profile.realtime_silence_ms is not None:
+            activity["silence_duration_ms"] = profile.realtime_silence_ms
+        if activity:
+            options["realtime_input_config"] = types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(**activity)
+            )
+        turn_handling: dict[str, Any] = {}
+        if profile.min_interruption_seconds is not None:
+            turn_handling["turn_handling"] = TurnHandlingOptions(
+                interruption={"min_duration": profile.min_interruption_seconds}
+            )
         return AgentSession(
             llm=google.realtime.RealtimeModel(
                 model=profile.realtime_model or "",
                 voice=profile.realtime_voice,
                 api_key=settings.gemini_api_key,
                 language="en-GB",
-                **(
-                    {
-                        "thinking_config": types.ThinkingConfig(
-                            thinking_level=types.ThinkingLevel(profile.realtime_thinking)
-                        )
-                    }
-                    if profile.realtime_thinking
-                    else {}
-                ),
-            )
+                **options,
+            ),
+            **turn_handling,
         )
     return AgentSession(
         stt=inference.STT(model=profile.stt_model, language=profile.stt_language),
