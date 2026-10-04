@@ -37,7 +37,7 @@ def test_json_round_trip():
         outcome=Outcome.PROVISIONAL,
         arrangement=Arrangement(date(2026, 10, 4), time(15), "Gym", ArrangementStatus.PROVISIONAL),
         notes=["paint the house"],
-        failure=None,
+        failure="sip_486",
         summary=CallSummary(("b1",), ("m1",), True),
         transcript=[Turn("agent", "hi"), Turn("callee", "hello")],
         metrics={"e2e_latency_p50": 1.2},
@@ -83,7 +83,7 @@ async def test_finish_call_provisional_outcome_from_tool_state():
 
 
 class BrokenSummariser:
-    async def summarise(self, owner, scenario, transcript, notes):
+    async def summarise(self, owner, scenario, transcript, notes, call_id=""):
         raise RuntimeError("LLM down")
 
 
@@ -108,14 +108,19 @@ async def test_finish_call_redacts_numbers_before_summary_and_storage():
     seen = {}
 
     class Spy:
-        async def summarise(self, owner, scenario, transcript, notes):
+        async def summarise(self, owner, scenario, transcript, notes, call_id=""):
             seen["text"] = " ".join(t.text for t in transcript) + " ".join(notes)
             return CallSummary(("ok",))
 
     store = InMemoryCallRecords()
     r = await finish_call(
         record=record(answered=True),
-        state=CallState(notes=["ring her on 07700 900123"]),
+        state=CallState(
+            notes=["ring her on 07700 900123"],
+            arrangement=Arrangement(
+                date(2026, 10, 4), time(15), "gym, call 07700 900123", ArrangementStatus.AGREED
+            ),
+        ),
         transcript=[Turn("callee", "my number is +44 7700 900123")],
         owner="Tom",
         scenario=Scenario("s", "b", "o", ()),
@@ -126,6 +131,8 @@ async def test_finish_call_redacts_numbers_before_summary_and_storage():
     assert "900123" not in seen["text"]
     assert r.transcript[0].text == "my number is [number]"
     assert r.notes == ["ring her on [number]"]
+    assert r.arrangement is not None
+    assert r.arrangement.place == "gym, call [number]"
 
 
 FRIEND = Contact("friend", "A Friend", "+447700900001", "friend")

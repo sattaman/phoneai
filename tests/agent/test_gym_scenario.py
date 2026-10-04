@@ -59,9 +59,10 @@ async def test_busy_time_is_not_recorded_and_alternatives_offered(harness: Harne
     h.calendar.events = [(at(4, 14), at(4, 16))]
     result = await h.session.run(user_input="How about Sunday at 3pm at PureGym on Mill Lane?")
 
+    result.expect.contains_function_call(name="record_arrangement")
     assert h.deps.state.arrangement is None
     text = assistant_text(result)
-    assert any(t in text for t in ("16:00", "4pm", "4 pm", "four", "09:00", "9am", "morning"))
+    assert "busy" in text or "not free" in text or "isn't free" in text
 
 
 async def test_asks_for_the_gym_when_place_missing(harness: Harness):

@@ -160,6 +160,37 @@ def decide_outcome(answered: bool, failure: str | None, arrangement: Arrangement
     return Outcome.PROVISIONAL
 
 
+LATENCY_METRICS = (
+    "e2e_latency",
+    "llm_node_ttft",
+    "tts_node_ttfb",
+    "end_of_turn_delay",
+    "transcription_delay",
+)
+
+
+def percentile(values: list[float], pct: float) -> float:
+    """Nearest-rank percentile (pct in 0-100). Values must be non-empty."""
+    ordered = sorted(values)
+    rank = max(1, -(-len(ordered) * pct // 100))  # ceil
+    return ordered[int(rank) - 1]
+
+
+def aggregate_turn_metrics(
+    turns: list[dict[str, float]], usage: dict[str, float] | None = None
+) -> dict[str, float]:
+    """Per-call metrics from per-turn metrics: p50/p95 of each latency (seconds, rounded to
+    ms) over the turns that report it, plus summed token usage and the turn count."""
+    out: dict[str, float] = {"agent_turns": float(sum("e2e_latency" in t for t in turns))}
+    for name in LATENCY_METRICS:
+        values = [t[name] for t in turns if isinstance(t.get(name), int | float)]
+        if values:
+            out[f"{name}_p50"] = round(percentile(values, 50), 3)
+            out[f"{name}_p95"] = round(percentile(values, 95), 3)
+    out.update(usage or {})
+    return out
+
+
 _PHONE_LIKE = re.compile(r"(?<![\w])\+?\d[\d ()-]{6,}\d")
 
 

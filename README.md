@@ -26,7 +26,13 @@ phoneai call friend ──dispatch──▶ LiveKit agent worker ──SIP──
 - **Outcomes come from tool state, not model claims.** `record_arrangement` checks the
   calendar itself and records `agreed` or `provisional`, so the agent can't invent availability.
 - **Privacy:** phone numbers live only in a local, gitignored `contacts.local.yaml`.
-  Dispatch metadata, participant identities and call records use contact ids.
+  Dispatch metadata, participant identities and call records use contact ids; numbers
+  spoken on a call are redacted from records, summaries and traces.
+- **Observability:** each call is one LangSmith thread (via the official
+  `langsmith[livekit]` integration): STT/LLM/TTS spans, tool calls, token usage and latency,
+  plus the post-call summary run, tagged with scenario, profile and models. Spans pass
+  through a redacting exporter before leaving the process. Call records also store
+  p50/p95 turn latency and token counts.
 
 ## Quick start
 

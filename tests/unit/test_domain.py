@@ -104,3 +104,22 @@ def test_audio_only_recorded_for_owner_or_browser():
     assert may_record_audio(True, me)
     assert not may_record_audio(True, friend)
     assert not may_record_audio(False, me)
+
+
+def test_aggregate_turn_metrics():
+    from phoneai.domain import aggregate_turn_metrics, percentile
+
+    assert percentile([3.0, 1.0, 2.0], 50) == 2.0
+    assert percentile([1.0, 2.0, 3.0, 4.0], 95) == 4.0
+    turns = [
+        {"e2e_latency": 1.0, "llm_node_ttft": 0.4},
+        {"e2e_latency": 3.0, "llm_node_ttft": 0.6},
+        {"transcription_delay": 0.2},  # a user turn
+    ]
+    m = aggregate_turn_metrics(turns, {"llm_input_tokens": 1200.0})
+    assert m["agent_turns"] == 2
+    assert m["e2e_latency_p50"] == 1.0
+    assert m["e2e_latency_p95"] == 3.0
+    assert m["transcription_delay_p50"] == 0.2
+    assert "tts_node_ttfb_p50" not in m
+    assert m["llm_input_tokens"] == 1200.0

@@ -184,6 +184,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cachetools"
+version = "7.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/2c/3f18755527b03ca9ff6be724bd5370cb777c76a87f17301377cf04a4729b/cachetools-7.2.0.tar.gz", hash = "sha256:bcac1a1b8da6909994a2957238a57b8140dab7c5c5c69a43669654fe87a33c1d", size = 41129, upload-time = "2026-09-16T20:48:27.209Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cc/bb/1c6e7a89b11da19f137e4ef5a5c5fe47a5bb686449ba343944ccf8fb34b2/cachetools-7.2.0-py3-none-any.whl", hash = "sha256:3045213f186b89fdd95d94441354c4bd87c570b7a38d8c3fd1d9dd37f6dc90d8", size = 16918, upload-time = "2026-09-16T20:48:25.575Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.7.22"
 source = { registry = "https://pypi.org/simple" }
@@ -880,6 +889,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/1f/5c2919fef6e3cf15167699abeb069a371d68da14a0e5cab89eeea11261d7/langsmith-0.14.4-py3-none-any.whl", hash = "sha256:ae0d98c2b0f9292ef7e12451d480937d79a0e7dcf2412ba847de6f053391b44a", size = 813097, upload-time = "2026-10-02T17:16:34.724Z" },
 ]
 
+[package.optional-dependencies]
+livekit = [
+    { name = "cachetools" },
+    { name = "livekit-agents" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+]
+
 [[package]]
 name = "livekit"
 version = "1.1.20"
@@ -1473,6 +1491,7 @@ dependencies = [
     { name = "httpx" },
     { name = "icalendar" },
     { name = "langchain-openrouter" },
+    { name = "langsmith", extra = ["livekit"] },
     { name = "livekit-agents", extra = ["openai"] },
     { name = "livekit-api" },
     { name = "livekit-plugins-ai-coustics" },
@@ -1497,6 +1516,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "icalendar", specifier = ">=7.3.0" },
     { name = "langchain-openrouter", specifier = ">=0.2.9" },
+    { name = "langsmith", extras = ["livekit"], specifier = ">=0.12.4" },
     { name = "livekit-agents", extras = ["ai-coustics", "openai"], specifier = "~=1.8" },
     { name = "livekit-api", specifier = ">=1.2.1" },
     { name = "livekit-plugins-ai-coustics", specifier = ">=0.3.2" },

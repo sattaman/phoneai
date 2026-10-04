@@ -33,8 +33,9 @@ from phoneai.domain import (  # noqa: E402
     Scenario,
     may_record_audio,
 )
+from phoneai.observability import setup_tracing, start_call_trace  # noqa: E402
 from phoneai.tools import ToolDeps  # noqa: E402
-from phoneai.voice.agent import build_agent, transcript_from  # noqa: E402
+from phoneai.voice.agent import build_agent, metrics_from, transcript_from  # noqa: E402
 from phoneai.voice.session import build_session  # noqa: E402
 
 logger = logging.getLogger("phoneai")
@@ -52,6 +53,7 @@ class SystemClock:
         return datetime.now(self._tz)
 
 
+setup_tracing()  # before AgentServer, per the LangSmith LiveKit integration docs
 server = AgentServer()
 
 
@@ -74,6 +76,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     scenario: Scenario | None = None
 
     async def on_shutdown() -> None:
+        if session:
+            record.metrics = metrics_from(session)
         await finish_call(
             record=record,
             state=state,
@@ -91,7 +95,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Watchdog runs from the start, so slow setup, ringing or speech can't overrun the deadline.
     async def watchdog() -> None:
         await asyncio.sleep(max(0.0, deadline - time.time() - WRAP_UP_SECONDS))
-        if session and record.answered:
+        if not record.answered:
+            record.failure = record.failure or "deadline"
+        elif session:
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(
                     session.say(
@@ -117,6 +123,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ctx.shutdown(reason="config error")
         return
     record.models = profile.models()
+    start_call_trace(
+        call_id,
+        {
+            "scenario": scenario.name,
+            "profile": profile.name,
+            "contact_id": req.contact_id or "browser",
+            **{f"model_{k}": v for k, v in record.models.items()},
+        },
+    )
 
     contacts = YamlContacts(settings.contacts_file)
     contact = None
@@ -146,12 +161,18 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 model=ai_coustics.EnhancerModel.QUAIL_VF_S
             ),
         )
-    await session.start(
-        room=ctx.room,
-        agent=build_agent(deps),
-        room_options=room_io.RoomOptions(audio_input=audio_input),
-        record=may_record_audio(profile.record_audio, contact),
-    )
+    try:
+        await session.start(
+            room=ctx.room,
+            agent=build_agent(deps),
+            room_options=room_io.RoomOptions(audio_input=audio_input),
+            record=may_record_audio(profile.record_audio, contact),
+        )
+    except Exception as e:
+        logger.warning("call %s: session start failed: %s", call_id, type(e).__name__)
+        record.failure = "session_error"
+        ctx.shutdown(reason="session error")
+        return
 
     if req.contact_id is not None:
         trunk = SipTrunk(
@@ -169,11 +190,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 max_call_duration_s=max_seconds,
             )
 
-        record.failure = await connect_callee(
+        failure = await connect_callee(
             contacts, req.contact_id, dial_contact, deadline - time.time()
         )
-        if record.failure:
-            ctx.shutdown(reason=record.failure)
+        if timer.done():  # the deadline passed while dialling; watchdog already shut down
+            return
+        if failure:
+            record.failure = failure
+            ctx.shutdown(reason=failure)
             return
     record.answered = True
 

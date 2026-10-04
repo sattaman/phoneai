@@ -54,6 +54,11 @@ class StubSummariser:
     summary: CallSummary = field(default_factory=lambda: CallSummary(bullets=("stub",)))
 
     async def summarise(
-        self, owner: str, scenario: Scenario, transcript: list[Turn], notes: list[str]
+        self,
+        owner: str,
+        scenario: Scenario,
+        transcript: list[Turn],
+        notes: list[str],
+        call_id: str = "",
     ) -> CallSummary:
         return self.summary

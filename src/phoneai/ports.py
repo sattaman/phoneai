@@ -40,7 +40,12 @@ class CallRecords(Protocol):
 
 class Summariser(Protocol):
     async def summarise(
-        self, owner: str, scenario: Scenario, transcript: list[Turn], notes: list[str]
+        self,
+        owner: str,
+        scenario: Scenario,
+        transcript: list[Turn],
+        notes: list[str],
+        call_id: str = "",
     ) -> CallSummary: ...
 
 

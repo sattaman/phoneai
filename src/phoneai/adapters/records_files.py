@@ -60,6 +60,7 @@ def from_json(text: str) -> CallRecord:
         transcript=[Turn(**t) for t in d.get("transcript", [])],
         metrics=d.get("metrics", {}),
         models=d.get("models", {}),
+        failure=d.get("failure"),
     )
 
 

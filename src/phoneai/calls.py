@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 from phoneai.domain import (
     CallRecord,
@@ -39,15 +40,15 @@ async def connect_callee(
         contact = contacts.get(contact_id)
     except KeyError:
         return "unknown_contact"
-    except Exception:
-        logger.exception("contacts unavailable")
+    except Exception as e:  # message/traceback may contain personal data: log the type only
+        logger.warning("contacts unavailable: %s", type(e).__name__)
         return "contacts_error"
     try:
         await dial(contact, int(remaining_seconds))
     except DialFailed as e:
         return e.category
-    except Exception:
-        logger.exception("dial setup failed")
+    except Exception as e:
+        logger.warning("dial setup failed: %s", type(e).__name__)
         return "setup_error"
     return None
 
@@ -68,14 +69,18 @@ async def finish_call(
     record.ended_at = clock.now()
     record.transcript = [Turn(t.role, redact_phone_numbers(t.text)) for t in transcript]
     record.notes = [redact_phone_numbers(n) for n in state.notes]
-    record.arrangement = state.arrangement
-    record.outcome = decide_outcome(record.answered, record.failure, state.arrangement)
+    record.arrangement = (
+        replace(state.arrangement, place=redact_phone_numbers(state.arrangement.place))
+        if state.arrangement
+        else None
+    )
+    record.outcome = decide_outcome(record.answered, record.failure, record.arrangement)
     if record.transcript:
         try:
             record.summary = await summariser.summarise(
-                owner, scenario, record.transcript, record.notes
+                owner, scenario, record.transcript, record.notes, call_id=record.call_id
             )
-        except Exception:
-            logger.exception("summary failed for call %s", record.call_id)
+        except Exception as e:
+            logger.warning("summary failed for call %s: %s", record.call_id, type(e).__name__)
     records.save(record)
     return record

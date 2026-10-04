@@ -24,7 +24,12 @@ class OpenRouterSummariser:
         self._llm = llm.with_structured_output(_Summary)
 
     async def summarise(
-        self, owner: str, scenario: Scenario, transcript: list[Turn], notes: list[str]
+        self,
+        owner: str,
+        scenario: Scenario,
+        transcript: list[Turn],
+        notes: list[str],
+        call_id: str = "",
     ) -> CallSummary:
         text = "\n".join(f"{t.role}: {t.text}" for t in transcript)
         result = await self._llm.ainvoke(
@@ -38,7 +43,12 @@ class OpenRouterSummariser:
                 ),
                 ("user", f"Transcript:\n{text}\n\nNotes saved during the call:\n{notes}"),
             ],
-            config={"run_name": "call_summary", "tags": ["summary"]},
+            # thread_id groups this run with the call's voice trace in LangSmith
+            config={
+                "run_name": "call_summary",
+                "tags": ["summary"],
+                "metadata": {"thread_id": call_id, "scenario": scenario.name},
+            },
         )
         assert isinstance(result, _Summary)
         return CallSummary(
