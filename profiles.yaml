@@ -1,7 +1,7 @@
 # Voice profiles: one per pipeline configuration we want to compare.
 # Model ids are LiveKit Inference (STT/TTS) and OpenRouter (LLM).
 uk_default:                 # LLM chosen by the evals in docs/evals.md; voice by ear
-  stt_model: deepgram/nova-3
+  stt_model: assemblyai/universal-3-6-pro   # beat Deepgram on UK phone audio (docs/voice-experiments.md)
   stt_language: en-GB
   llm_model: openai/gpt-4.1-mini
   llm_fallback: google/gemini-2.5-flash-lite
@@ -23,7 +23,7 @@ uk_deepgram:                # previous default: British voice, slower to start (
   record_audio: false
 
 uk_default_recorded:        # same, with audio recording: owner-only calls
-  stt_model: deepgram/nova-3
+  stt_model: assemblyai/universal-3-6-pro   # beat Deepgram on UK phone audio (docs/voice-experiments.md)
   stt_language: en-GB
   llm_model: openai/gpt-4.1-mini
   llm_fallback: google/gemini-2.5-flash-lite

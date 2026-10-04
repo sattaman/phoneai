@@ -45,7 +45,7 @@ $ phoneai calls
 1. `phoneai call <contact>` asks a running agent worker to phone a contact, following a
    **scenario** (a YAML brief, for example "arrange a gym session: day, time and place").
 2. The agent dials through a Twilio SIP trunk, says up front that it's an AI calling on your
-   behalf, and holds the conversation: speech-to-text (Deepgram Nova-3, en-GB), an LLM via
+   behalf, and holds the conversation: speech-to-text (AssemblyAI Universal-3.6, en-GB), an LLM via
    OpenRouter (`gpt-4.1-mini` by default), and text-to-speech (Cartesia Sonic-3.6, British
    voice, with expressive mode for emotion and pauses). It plays along with jokes, deflects
    off-topic requests and steers back to the goal.
@@ -62,7 +62,7 @@ flowchart LR
   CLI["phoneai call"] -- dispatch<br/>(contact_id, scenario) --> W["LiveKit agent worker<br/>voice/entry.py"]
   W -- SIP --> T["Twilio"] --> P(("phone"))
   subgraph voice ["LiveKit AgentSession"]
-    STT["STT<br/>Nova-3"] --> LLM["LLM<br/>OpenRouter"] --> TTS["TTS<br/>Cartesia"]
+    STT["STT<br/>AssemblyAI"] --> LLM["LLM<br/>OpenRouter"] --> TTS["TTS<br/>Cartesia"]
   end
   W --> voice
   LLM -- function calls --> TA["tool adapter"]

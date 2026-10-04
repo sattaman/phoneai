@@ -27,6 +27,17 @@ def build_llm(profile: Profile, settings: Settings, *, fallback: bool = True) ->
     )
 
 
+def stt_keyterms(model: str, keyterms: tuple[str, ...]) -> Any:
+    """Provider-specific keyterm option for LiveKit Inference STT."""
+    if not keyterms:
+        return NOT_GIVEN
+    if model.startswith("deepgram/"):
+        return {"keyterm": list(keyterms)}
+    if model.startswith("assemblyai/"):
+        return {"keyterms_prompt": list(keyterms)}
+    return NOT_GIVEN
+
+
 def build_session(
     profile: Profile, settings: Settings, keyterms: tuple[str, ...] = ()
 ) -> AgentSession:
@@ -71,8 +82,8 @@ def build_session(
         stt=inference.STT(
             model=profile.stt_model,
             language=profile.stt_language,
-            # Deepgram Nova-3 keyterm prompting: brand and place names it would mishear.
-            extra_kwargs={"keyterm": list(keyterms)} if keyterms else NOT_GIVEN,
+            # Keyterm prompting: brand and place names it would otherwise mishear.
+            extra_kwargs=stt_keyterms(profile.stt_model, keyterms),
         ),
         llm=build_llm(profile, settings),
         tts=inference.TTS(

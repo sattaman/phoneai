@@ -26,14 +26,33 @@ Takeaways:
 - Of the voice samples, the British voices from most providers sounded stiffer than their
   American voices. The Cartesia British voice was the exception.
 
-## 2. LLM for the voice loop
+## 2. Speech-to-text on UK phone audio
+
+Two clips from a recorded call were replayed through each LiveKit Inference STT model. The
+caller said "Saturday at 10, PureGym" and "Is this a robot?"; the second clip was clipped
+(distorted) on the phone line.
+
+| Model | "…Saturday at 10, PureGym" | "Is this a robot?" (clipped) |
+|---|---|---|
+| Deepgram Nova-3 (previous default) | Thursday, "Peugeot" | "Plus, she's getting the robots for me" |
+| Nova-3 + keyterm `PureGym` | Thursday, PureGym | same |
+| Deepgram Flux | Thursday, Puregym | "Okay. She's getting the robots for me" |
+| **AssemblyAI Universal-3.6 Pro** | **Saturday, Pure Gym** | "What's this? She's getting a robot phone, mate" |
+| Cartesia Ink-2 | Saturday, Pure Gym | "Also, she's getting the robots phone me" |
+
+On the live call, Deepgram had heard "Tuesday", so it got the day wrong on both the call and
+the replay. AssemblyAI is now the default STT. Scenarios also pass keyterms (expected
+brand and place names) to the STT, and the agent is told to ask the caller to repeat
+anything that doesn't make sense rather than guessing.
+
+## 3. LLM for the voice loop
 
 See [evals.md](evals.md). `gpt-4.1-mini` was the only model at 100% on both the
 deterministic checks and the judges, with a 0.82s median time to first token. GPT-6 Luna
 matches its quality at about a third of the cost, but only with `reasoning_effort=minimal`
 (1.29s). At its default reasoning (2.55s) it's too slow for a phone turn.
 
-## 3. Speech-to-speech (Gemini Live): three real calls
+## 4. Speech-to-speech (Gemini Live): three real calls
 
 Speech-to-speech models listen, think and speak in one model, and lead the naturalness
 benchmarks. Three calls with Gemini Live, analysed from LangSmith span timings:
@@ -57,12 +76,12 @@ Findings:
 - **Cost.** About 32k input tokens for a 90s call (context is re-billed every turn), so
   roughly 10p, 2–5× the cascade.
 
-**Decision.** The cascade (Deepgram Nova-3 → gpt-4.1-mini → Cartesia, expressive) stays
+**Decision.** The cascade (AssemblyAI → gpt-4.1-mini → Cartesia) stays
 the default. On calls it replies in about 1–1.5s, uses tools reliably, and costs less.
 Speech-to-speech stays available as profiles (`uk_gemini_live`, `uk_gemini_flash_live`)
 for re-testing as the models mature. GPT-Live-1 and Grok Voice are the next candidates.
 
-## 4. Things that weren't the model
+## 5. Things that weren't the model
 
 - **No warm worker process** added about 5s before dialling (`num_idle_processes=1`).
 - **The deadline was measured from the request,** so a slow network used up a 2-minute
