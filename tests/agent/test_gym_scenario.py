@@ -44,9 +44,7 @@ async def test_unknown_calendar_records_provisional_and_never_claims_busy(harnes
 
 async def test_free_calendar_agrees_the_session(harness: Harness):
     h = harness
-    result = await h.session.run(
-        user_input="Sunday at 3pm at PureGym on Mill Lane works for me."
-    )
+    result = await h.session.run(user_input="Sunday at 3pm at PureGym on Mill Lane works for me.")
 
     result.expect.contains_function_call(name="record_arrangement")
     arrangement = h.deps.state.arrangement
