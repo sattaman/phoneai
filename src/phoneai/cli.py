@@ -15,6 +15,11 @@ from phoneai.config import Settings, load_profile, load_scenario  # noqa: E402
 
 
 def cmd_agent(args: argparse.Namespace) -> None:
+    import os
+
+    # Console/browser sessions have no dispatch metadata; these set what they use.
+    os.environ["PHONEAI_SCENARIO"] = args.scenario
+    os.environ["PHONEAI_PROFILE"] = args.profile
     from phoneai.voice.entry import main as run_agent
 
     sys.argv = ["phoneai-agent", args.mode, *args.rest]
@@ -70,8 +75,9 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     import httpx
 
-    from phoneai.evals import read_rows, render_report
+    from phoneai.evals import load_cases, read_rows, render_report
 
+    expected_rows = len(load_cases(Path("evals/cases.yaml"))) * args.samples
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     results = Path("evals/results") / f"{stamp}.jsonl"
     models = [m.strip() for m in args.models.split(",") if m.strip()]
@@ -85,16 +91,33 @@ def cmd_eval(args: argparse.Namespace) -> None:
             "LANGSMITH_PROJECT": "phoneai-tests",
             "LANGSMITH_TEST_SUITE": "phoneai-gym-evals",
             "LANGSMITH_EXPERIMENT": f"{model.split('/')[-1]}-{stamp}",
-            "LANGSMITH_EXPERIMENT_METADATA": json.dumps({"model": model, "samples": args.samples}),
+            "LANGSMITH_EXPERIMENT_METADATA": json.dumps(
+                {"model": model, "samples": args.samples, "reasoning": args.reasoning or "-"}
+            ),
+            "EVAL_REASONING_EFFORT": args.reasoning or "",
         }
-        subprocess.run(["pytest", "-m", "eval", "-q", "tests/evals"], env=env, check=False)
+        # pytest exits 1 when checks fail (expected); 2+ means the run itself broke.
+        code = subprocess.run(["pytest", "-m", "eval", "-q", "tests/evals"], env=env).returncode
+        if code > 1:
+            print(f"!! eval run for {model} errored (pytest exit {code})")
+
+    rows = read_rows(results) if results.exists() else []
+    incomplete = {m: n for m in models if (n := sum(r.model == m for r in rows)) != expected_rows}
+    if not rows:
+        sys.exit("No eval results recorded; nothing to report.")
 
     catalogue = httpx.get("https://openrouter.ai/api/v1/models", timeout=30).json()["data"]
     prices = {
         m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"]))
         for m in catalogue
     }
-    report = render_report(read_rows(results), prices)
+    report = render_report(rows, prices)
+    if incomplete:
+        report += (
+            "\n**Incomplete runs** (rows recorded / expected): "
+            + ", ".join(f"`{m}` {n}/{expected_rows}" for m, n in incomplete.items())
+            + "\n"
+        )
     header = (
         f"# Model comparison: book_gym_session\n\n"
         f"Run {datetime.now():%Y-%m-%d %H:%M}; {args.samples} sample(s) per case; "
@@ -112,7 +135,8 @@ def main(argv: list[str] | None = None) -> None:
 
     p = sub.add_parser("agent", help="run the voice agent worker (dev | start | console)")
     p.add_argument("mode", choices=["dev", "start", "console"])
-    p.add_argument("rest", nargs=argparse.REMAINDER)
+    p.add_argument("--scenario", default="book_gym_session", help="for console/browser sessions")
+    p.add_argument("--profile", default="uk_default", help="for console/browser sessions")
     p.set_defaults(func=cmd_agent)
 
     p = sub.add_parser("call", help="have the running agent call a contact")
@@ -129,9 +153,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--models", default="google/gemini-2.5-flash-lite")
     p.add_argument("--samples", type=int, default=2)
     p.add_argument("--out", default="docs/evals.md")
+    p.add_argument("--reasoning", default=None, help="reasoning effort for reasoning models")
     p.set_defaults(func=cmd_eval)
 
-    args = parser.parse_args(argv)
+    # Unknown options after `agent <mode>` are passed through to LiveKit's CLI.
+    args, extra = parser.parse_known_args(argv)
+    if extra and args.command != "agent":
+        parser.error(f"unrecognized arguments: {' '.join(extra)}")
+    args.rest = extra
     args.func(args)
 
 

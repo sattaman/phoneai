@@ -59,3 +59,12 @@ def test_render_report():
     md = render_report([row, bad], {"m": (1e-6, 2e-6)})
     assert "| `m` | 2 | 50% | 75% | 0.60s | 1,000 / 100 | $0.0012 |" in md
     assert "d #0: nothing recorded" in md
+
+
+def test_date_and_ai_disclosure_are_checked():
+    case = EvalCase("c", "unknown", (), {"status": "provisional", "day": "2026-10-05"})
+    failures = check_expectations(case, state(), "", opening_text="Hello, Tom's assistant here")
+    assert "day 2026-10-04 != 2026-10-05" in failures
+    assert "opening did not disclose it is an AI" in failures
+    ok = EvalCase("c", "unknown", (), {"status": "provisional", "day": "2026-10-04"})
+    assert check_expectations(ok, state(), "", opening_text="Hi, I'm Tom's AI assistant") == []

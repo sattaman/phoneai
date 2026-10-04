@@ -77,8 +77,15 @@ async def finish_call(
     record.outcome = decide_outcome(record.answered, record.failure, record.arrangement)
     if record.transcript:
         try:
-            record.summary = await summariser.summarise(
+            summary = await summariser.summarise(
                 owner, scenario, record.transcript, record.notes, call_id=record.call_id
+            )
+            record.summary = replace(
+                summary,
+                bullets=tuple(redact_phone_numbers(b) for b in summary.bullets),
+                messages_for_owner=tuple(
+                    redact_phone_numbers(m) for m in summary.messages_for_owner
+                ),
             )
         except Exception as e:
             logger.warning("summary failed for call %s: %s", record.call_id, type(e).__name__)

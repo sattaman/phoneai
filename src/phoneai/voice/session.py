@@ -8,13 +8,19 @@ from livekit.plugins import openai
 from phoneai.config import Profile, Settings
 
 
-def build_llm(profile: Profile, settings: Settings) -> openai.LLM:
+def build_llm(profile: Profile, settings: Settings, *, fallback: bool = True) -> openai.LLM:
+    """OpenRouter LLM for a profile. Evals pass fallback=False so results are attributable
+    to the named model."""
+    extra: dict = {}
+    if profile.llm_reasoning_effort:
+        extra["reasoning_effort"] = profile.llm_reasoning_effort
     return openai.LLM.with_openrouter(
         model=profile.llm_model,
-        fallback_models=[profile.llm_fallback],
+        fallback_models=[profile.llm_fallback] if fallback else None,
         api_key=settings.openrouter_api_key,
         app_name="phoneai",
         temperature=0.4,
+        **extra,
     )
 
 

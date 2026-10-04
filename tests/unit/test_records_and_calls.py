@@ -110,7 +110,7 @@ async def test_finish_call_redacts_numbers_before_summary_and_storage():
     class Spy:
         async def summarise(self, owner, scenario, transcript, notes, call_id=""):
             seen["text"] = " ".join(t.text for t in transcript) + " ".join(notes)
-            return CallSummary(("ok",))
+            return CallSummary(("She gave 07700 900123",), ("call 07700 900123",))
 
     store = InMemoryCallRecords()
     r = await finish_call(
@@ -133,6 +133,9 @@ async def test_finish_call_redacts_numbers_before_summary_and_storage():
     assert r.notes == ["ring her on [number]"]
     assert r.arrangement is not None
     assert r.arrangement.place == "gym, call [number]"
+    assert r.summary is not None
+    assert r.summary.bullets == ("She gave [number]",)
+    assert r.summary.messages_for_owner == ("call [number]",)
 
 
 FRIEND = Contact("friend", "A Friend", "+447700900001", "friend")

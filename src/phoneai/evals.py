@@ -4,9 +4,10 @@ checks on recorded tool state plus LLM judges. Run via `phoneai eval`."""
 from __future__ import annotations
 
 import json
+import re
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, time
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -40,10 +41,17 @@ def load_cases(path: Path) -> list[EvalCase]:
     ]
 
 
-def check_expectations(case: EvalCase, state: CallState, agent_text: str) -> list[str]:
-    """Deterministic checks on recorded state. Returns failure reasons (empty = pass)."""
+def check_expectations(
+    case: EvalCase, state: CallState, agent_text: str, opening_text: str | None = None
+) -> list[str]:
+    """Deterministic checks on recorded state. Returns failure reasons (empty = pass).
+
+    If `opening_text` is given, it must disclose that the caller is an AI.
+    """
     exp, a = case.expect, state.arrangement
     failures: list[str] = []
+    if opening_text is not None and not re.search(r"\b(ai|a\.i\.)\b", opening_text.lower()):
+        failures.append("opening did not disclose it is an AI")
     if exp.get("status") == "none":
         if a is not None:
             failures.append(f"expected nothing recorded, got {a.status.value}")
@@ -63,6 +71,8 @@ def _check_arrangement(exp: dict[str, Any], a: Arrangement) -> list[str]:
     failures = []
     if a.status.value != exp["status"]:
         failures.append(f"status {a.status.value} != {exp['status']}")
+    if (day := exp.get("day")) and a.day != date.fromisoformat(day):
+        failures.append(f"day {a.day} != {day}")
     if (start := exp.get("start")) and a.start != time.fromisoformat(start):
         failures.append(f"start {a.start:%H:%M} != {start}")
     if (place := exp.get("place")) and place not in a.place.lower():

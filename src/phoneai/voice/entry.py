@@ -40,8 +40,11 @@ from phoneai.voice.session import build_session  # noqa: E402
 
 logger = logging.getLogger("phoneai")
 
-DEFAULT_SCENARIO = "book_gym_session"
-DEFAULT_PROFILE = "uk_default"
+import os  # noqa: E402
+
+# Used when no dispatch metadata is present (browser / console sessions).
+DEFAULT_SCENARIO = os.getenv("PHONEAI_SCENARIO", "book_gym_session")
+DEFAULT_PROFILE = os.getenv("PHONEAI_PROFILE", "uk_default")
 WRAP_UP_SECONDS = 15  # graceful goodbye before SIP's hard max_call_duration cap
 
 

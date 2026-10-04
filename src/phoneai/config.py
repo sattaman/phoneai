@@ -62,6 +62,7 @@ class Profile:
     tts_model: str
     tts_voice: str
     tts_language: str
+    llm_reasoning_effort: str | None = None  # for reasoning models, e.g. "minimal"
     min_endpointing_delay: float = 0.8
     max_endpointing_delay: float = 3.0
     record_audio: bool = False  # only enable for calls to the owner (privacy)

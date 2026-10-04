@@ -29,3 +29,14 @@ uk_cheap:                   # ~5x cheaper LLM; misses some save_note calls (docs
   tts_voice: pandora
   tts_language: en-GB
   record_audio: false
+
+uk_luna:                    # GPT-6 Luna, reasoning minimal: ~3x cheaper, ~0.5s slower first token
+  stt_model: deepgram/nova-3
+  stt_language: en-GB
+  llm_model: openai/gpt-6-luna
+  llm_fallback: openai/gpt-4.1-mini
+  llm_reasoning_effort: minimal
+  tts_model: deepgram/aura-2
+  tts_voice: pandora
+  tts_language: en-GB
+  record_audio: false

@@ -2,7 +2,8 @@
 
 An AI phone assistant that **makes outbound calls on your behalf**. It holds a natural
 British-English conversation, uses tools to check your calendar and record what was agreed,
-takes messages, and writes up every call. Each call is traced end to end in LangSmith.
+takes messages, and writes up every call. With LangSmith enabled, each call is traced end
+to end.
 
 Built with [LiveKit Agents](https://docs.livekit.io/agents/) (voice pipeline and SIP calling),
 OpenRouter (any LLM), LangChain (structured summaries) and LangSmith (tracing and evals),
@@ -77,7 +78,7 @@ Two bugs found on real calls drove the design:
 
 ## Observability
 
-Each call is a single **LangSmith thread**, via the official `langsmith[livekit]`
+With `LANGSMITH_TRACING=true`, each call is a single **LangSmith thread**, via the official `langsmith[livekit]`
 integration (`configure_livekit()` plus `set_thread_id(call_id)`):
 
 - the session trace, with STT, LLM and TTS spans, tool calls, token usage and latency
@@ -92,9 +93,10 @@ end-of-turn) and token counts.
 
 ## Privacy
 
-Phone numbers live only in a gitignored `contacts.local.yaml`. Everything else (dispatch
-metadata, SIP identities, logs, records, traces) uses ids, and numbers spoken on a call are
-redacted. Audio recording is off unless you're calling yourself. gitleaks runs in
+Stored phone numbers live only in a gitignored `contacts.local.yaml`. Dispatch metadata,
+SIP identities, logs, records and traces use ids. Numbers spoken during a call do pass
+through the speech and LLM providers in real time, but they're redacted from records,
+summaries and traces. Audio recording is off unless you're calling yourself. gitleaks runs in
 pre-commit and CI. Committed scenarios, contacts and eval cases are synthetic. See
 [ADR 4](docs/adr/0004-privacy-by-design.md).
 
@@ -116,8 +118,16 @@ uv run phoneai call me --scenario book_gym_session   # terminal 2: rings you
 uv run phoneai calls                          # outcomes
 ```
 
-Without Twilio you can talk to the agent in the browser: run `phoneai agent dev` and open
-your project's **Agents → Console** in LiveKit Cloud (agent name `phoneai`).
+**No phone needed to try it.** You can talk to the agent with your own mic and speakers:
+
+```sh
+uv run phoneai agent console                                    # in your terminal
+uv run phoneai agent console --scenario book_gym_session --profile uk_luna
+```
+
+Or run `phoneai agent dev` and open your project's **Agents → Console** in LiveKit Cloud
+(agent name `phoneai`) to talk to it in the browser. Either way the session is written up
+in `calls/` like a phone call.
 
 Configuration lives in three places:
 - `.env`: keys, plus `OWNER_NAME`, `TIMEZONE`, `MAX_CALL_SECONDS` and

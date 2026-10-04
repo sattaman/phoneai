@@ -31,3 +31,22 @@ Run 2026-10-04; 2 samples × 6 scripted conversations per model (`evals/cases.ya
   second turn.
 - **Claude Haiku 4.5 was also perfect,** but about 5× the cost and slower to first token,
   with more input tokens per call (longer tool and system prompts).
+
+## Follow-up: GPT-6 Luna (reasoning model) and stricter checks
+
+The checks were tightened after review: each case now also verifies the booked **date**,
+every conversation starts with the production opening (which must disclose that it's an
+AI), and fallback models are disabled so results belong to the named model.
+
+| Model | Reasoning | Checks pass | Judges pass | LLM TTFT p50 | Est. cost / conversation |
+|---|---|---|---|---|---|
+| `openai/gpt-4.1-mini` | n/a | 100% | 100% | 0.82s | $0.0017 |
+| `openai/gpt-6-luna` | minimal | 100% | 100% | 1.29s | $0.0005 |
+| `openai/gpt-6-luna` | low | 100% | 92% | 1.35s | $0.0005 |
+| `openai/gpt-6-luna` | default | 100% | 88% | 2.55s | $0.0006 |
+
+The default-reasoning row ran before the stricter checks were added. Reasoning effort
+matters most for latency: at its default Luna thinks before every reply, which is too slow
+for a phone turn. At `minimal` it matches GPT-4.1-mini on quality at about a third of the
+cost, but takes roughly 0.5s longer to start speaking. It's available as the `uk_luna`
+profile; `uk_default` stays on GPT-4.1-mini for responsiveness.

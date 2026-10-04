@@ -11,8 +11,8 @@ published. The repository is public.
   Dispatch metadata, SIP participant identities, logs and call records use a `contact_id`
   or `call_id`. SIP error text is never logged (it can contain the dialled number).
 - **Redaction.** Anything that looks like a phone number (9+ digits) is replaced with
-  `[number]` in transcripts, notes, arrangement places and summaries before they are
-  stored or summarised.
+  `[number]` in transcripts, notes and arrangement places before they are summarised or
+  stored, and in the summary's output before it is stored.
 - **Traces.** LiveKit spans pass through a redacting OpenTelemetry exporter before going
   to LangSmith; the LangChain summary run uses a LangSmith client with a redacting
   anonymizer. Both paths were verified against LangSmith with a spoken number.
@@ -22,6 +22,8 @@ published. The repository is public.
   committed scenarios, contacts and eval cases are synthetic (Ofcom drama-range numbers).
 
 ## Consequences
+- Spoken content, including any numbers said aloud, passes through the STT and LLM
+  providers in real time. Redaction applies to what we store and trace, not to that path.
 - Names and conversation content still reach LangSmith (redaction targets numbers only).
   Scenario briefs are owner-written config and are traced, so they should not contain
   third parties' personal details.
