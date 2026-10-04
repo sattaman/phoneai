@@ -91,13 +91,24 @@ def to_markdown(r: CallRecord) -> str:
     return "\n".join(lines) + "\n"
 
 
+def record_stem(record: CallRecord) -> str:
+    return f"{record.started_at:%Y-%m-%d_%H%M%S}_{record.call_id}"
+
+
 class FileCallRecords:
     def __init__(self, directory: Path) -> None:
         self._dir = directory
 
+    def save_audio(self, record: CallRecord, source: Path) -> Path:
+        """Keep a copy of the call recording next to its record (owner-only calls)."""
+        self._dir.mkdir(parents=True, exist_ok=True)
+        target = self._dir / f"{record_stem(record)}{source.suffix}"
+        target.write_bytes(source.read_bytes())
+        return target
+
     def save(self, record: CallRecord) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
-        stem = f"{record.started_at:%Y-%m-%d_%H%M%S}_{record.call_id}"
+        stem = record_stem(record)
         (self._dir / f"{stem}.json").write_text(to_json(record))
         (self._dir / f"{stem}.md").write_text(to_markdown(record))
 

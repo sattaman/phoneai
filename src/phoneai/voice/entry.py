@@ -89,6 +89,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             with contextlib.suppress(Exception):
                 await session.aclose()
             record.metrics = {**record.metrics, **metrics_from(session)}
+            # LiveKit writes the recording (both sides) here when record=True.
+            audio = ctx.session_directory / "audio.ogg"
+            if audio.exists():
+                saved = FileCallRecords(settings.calls_dir).save_audio(record, audio)
+                logger.info("call %s audio saved to %s", call_id, saved)
         await finish_call(
             record=record,
             state=state,
